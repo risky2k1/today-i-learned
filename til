@@ -15,11 +15,6 @@ TOPIC="$*"
 
 mkdir -p "daily/$MONTH"
 
-if [ -f "$FILE" ]; then
-  echo "File $FILE đã tồn tại. Mở để xem/sửa."
-  exit 0
-fi
-
 if [ -z "$OPEN_ROUTER_API_KEY" ]; then
   echo "Thiếu OPEN_ROUTER_API_KEY. Thêm vào .env hoặc export."
   exit 1
@@ -44,8 +39,13 @@ if [ -z "$CONTENT" ]; then
   exit 1
 fi
 
-echo -e "# $DATE\n\n$CONTENT" > "$FILE"
-echo "Đã tạo: $FILE"
+if [ -f "$FILE" ]; then
+  echo -e "\n\n$CONTENT" >> "$FILE"
+  echo "Đã thêm vào: $FILE"
+else
+  echo -e "# $DATE\n\n$CONTENT" > "$FILE"
+  echo "Đã tạo: $FILE"
+fi
 
 # Git add, commit, push
 git add "$FILE"

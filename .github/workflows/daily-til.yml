@@ -30,11 +30,6 @@ jobs:
           mkdir -p daily/$MONTH
           FILE="daily/$MONTH/$DATE.md"
 
-          if [ -f "$FILE" ]; then
-            echo "File exists, skipping"
-            exit 0
-          fi
-
           PROMPT='Viết 1 mục Today I Learned ngắn gọn (2-4 câu) về 1 chủ đề tech ngẫu nhiên (DevOps, Automation, Travel Tech, hoặc lập trình). Format markdown: bắt đầu bằng ## [Tên category], sau đó 1-2 bullet points. Viết bằng tiếng Việt, nội dung thực tế hữu ích.'
 
           if [ -n "$OPEN_ROUTER_API_KEY" ]; then
@@ -47,15 +42,24 @@ jobs:
             CONTENT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty')
 
             if [ -n "$CONTENT" ]; then
-              echo -e "# $DATE\n\n$CONTENT" > "$FILE"
-              echo "AI content generated"
+              if [ -f "$FILE" ]; then
+                echo -e "\n\n$CONTENT" >> "$FILE"
+                echo "Appended to existing file"
+              else
+                echo -e "# $DATE\n\n$CONTENT" > "$FILE"
+                echo "AI content generated"
+              fi
             else
-              echo "API failed, using fallback"
-              echo -e "# $DATE\n\n## DevOps\n- Hôm nay chưa có thông tin." > "$FILE"
+              if [ ! -f "$FILE" ]; then
+                echo "API failed, using fallback"
+                echo -e "# $DATE\n\n## DevOps\n- Hôm nay chưa có thông tin." > "$FILE"
+              fi
             fi
           else
-            echo "No API key, using fallback"
-            echo -e "# $DATE\n\n## DevOps\n- Hôm nay chưa có thông tin." > "$FILE"
+            if [ ! -f "$FILE" ]; then
+              echo "No API key, using fallback"
+              echo -e "# $DATE\n\n## DevOps\n- Hôm nay chưa có thông tin." > "$FILE"
+            fi
           fi
 
       - name: Commit and push
