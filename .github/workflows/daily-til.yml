@@ -8,6 +8,8 @@ on:
 jobs:
   til:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       OPEN_ROUTER_API_KEY: ${{ secrets.OPEN_ROUTER_API_KEY }}
 
