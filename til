@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -e
+
+# Load .env if exists
+if [ -f .env ]; then
+  set -a
+  source .env
+  set +a
+fi
+
+DATE=$(date +'%Y-%m-%d')
+MONTH=$(date +'%Y-%m')
+FILE="daily/$MONTH/$DATE.md"
+TOPIC="$*"
+
+mkdir -p "daily/$MONTH"
+
+if [ -f "$FILE" ]; then
+  echo "File $FILE đã tồn tại. Mở để xem/sửa."
+  exit 0
+fi
+
+if [ -z "$OPEN_ROUTER_API_KEY" ]; then
+  echo "Thiếu OPEN_ROUTER_API_KEY. Thêm vào .env hoặc export."
+  exit 1
+fi
+
+if [ -n "$TOPIC" ]; then
+  PROMPT="Viết 1 mục Today I Learned ngắn gọn (2-4 câu) về chủ đề: $TOPIC. Format markdown: bắt đầu bằng ## [Tên category phù hợp], sau đó 1-2 bullet points. Viết bằng tiếng Việt, nội dung thực tế hữu ích."
+else
+  PROMPT="Viết 1 mục Today I Learned ngắn gọn (2-4 câu) về 1 chủ đề tech ngẫu nhiên (DevOps, Automation, Travel Tech, hoặc lập trình). Format markdown: bắt đầu bằng ## [Tên category], sau đó 1-2 bullet points. Viết bằng tiếng Việt, nội dung thực tế hữu ích."
+fi
+
+BODY=$(jq -n --arg p "$PROMPT" '{model: "arcee-ai/trinity-large-preview:free", messages: [{role: "user", content: $p}]}')
+RESPONSE=$(curl -s -X POST "https://openrouter.ai/api/v1/chat/completions" \
+  -H "Authorization: Bearer $OPEN_ROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "$BODY")
+
+CONTENT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty')
+
+if [ -z "$CONTENT" ]; then
+  echo "API lỗi. Response: $RESPONSE"
+  exit 1
+fi
+
+echo -e "# $DATE\n\n$CONTENT" > "$FILE"
+echo "Đã tạo: $FILE"
+
+# Git add, commit, push
+git add "$FILE"
+git commit -m "TIL $DATE" && git push && echo "Đã push lên repo." || echo "Chưa push (có thể chưa có remote hoặc cần auth)."

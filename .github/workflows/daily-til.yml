@@ -8,27 +8,60 @@ on:
 jobs:
   til:
     runs-on: ubuntu-latest
+    env:
+      OPEN_ROUTER_API_KEY: ${{ secrets.OPEN_ROUTER_API_KEY }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Create daily file
+      - name: Set date
+        id: date
         run: |
-          DATE=$(date +'%Y-%m-%d')
-          MONTH=$(date +'%Y-%m')
-          mkdir -p daily/$MONTH
-          FILE=daily/$MONTH/$DATE.md
+          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "month=$(date +'%Y-%m')" >> $GITHUB_OUTPUT
 
-          if [ ! -f "$FILE" ]; then
-            echo "# $DATE" >> $FILE
-            echo "" >> $FILE
-            echo "## Today I Learned" >> $FILE
+      - name: Create daily file with AI content
+        env:
+          DATE: ${{ steps.date.outputs.date }}
+          MONTH: ${{ steps.date.outputs.month }}
+        run: |
+          mkdir -p daily/$MONTH
+          FILE="daily/$MONTH/$DATE.md"
+
+          if [ -f "$FILE" ]; then
+            echo "File exists, skipping"
+            exit 0
           fi
 
-      - name: Commit
+          PROMPT='Viết 1 mục Today I Learned ngắn gọn (2-4 câu) về 1 chủ đề tech ngẫu nhiên (DevOps, Automation, Travel Tech, hoặc lập trình). Format markdown: bắt đầu bằng ## [Tên category], sau đó 1-2 bullet points. Viết bằng tiếng Việt, nội dung thực tế hữu ích.'
+
+          if [ -n "$OPEN_ROUTER_API_KEY" ]; then
+            BODY=$(jq -n --arg p "$PROMPT" '{model: "arcee-ai/trinity-large-preview:free", messages: [{role: "user", content: $p}]}')
+            RESPONSE=$(curl -s -X POST "https://openrouter.ai/api/v1/chat/completions" \
+              -H "Authorization: Bearer $OPEN_ROUTER_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d "$BODY")
+
+            CONTENT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty')
+
+            if [ -n "$CONTENT" ]; then
+              echo -e "# $DATE\n\n$CONTENT" > "$FILE"
+              echo "AI content generated"
+            else
+              echo "API failed, using fallback"
+              echo -e "# $DATE\n\n## DevOps\n- Hôm nay chưa có thông tin." > "$FILE"
+            fi
+          else
+            echo "No API key, using fallback"
+            echo -e "# $DATE\n\n## DevOps\n- Hôm nay chưa có thông tin." > "$FILE"
+          fi
+
+      - name: Commit and push
+        env:
+          DATE: ${{ steps.date.outputs.date }}
         run: |
           git config --global user.name "til-bot"
           git config --global user.email "til-bot@users.noreply.github.com"
           git add .
-          git commit -m "TIL $DATE" || exit 0
+          git diff --staged --quiet || git commit -m "TIL $DATE"
           git push
