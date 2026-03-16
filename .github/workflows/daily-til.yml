@@ -32,7 +32,16 @@ jobs:
           mkdir -p daily/$MONTH
           FILE="daily/$MONTH/$DATE.md"
 
-          PROMPT='Viết 1 mục Today I Learned ngắn gọn (2-4 câu) về 1 chủ đề tech ngẫu nhiên (DevOps, Automation, Travel Tech, hoặc lập trình). Format markdown: bắt đầu bằng ## [Tên category], sau đó 1-2 bullet points. Viết bằng tiếng Việt, nội dung thực tế hữu ích.'
+          PROMPT='Bạn là một developer Việt Nam đang ghi lại Today I Learned cho chính mình.
+
+Yêu cầu:
+- Chọn ngẫu nhiên MỘT trong các category sau: DevOps, Automation, Travel Tech, Programming.
+- Hạn chế lặp lại đúng cùng chủ đề (ví dụ Infrastructure as Code, CI/CD) nếu vài ngày gần đây đã nói; ưu tiên góc nhìn hoặc chủ đề khác.
+- Viết 1 mục Today I Learned ngắn gọn (2-4 câu), tiếng Việt tự nhiên, không quá sách vở.
+- Format markdown:
+  - Dòng đầu: ## [Tên category]
+  - Sau đó là 1 đoạn text hoặc 1-3 bullet points.
+- Có thể thêm 1 câu kết kiểu nhận xét cá nhân hoặc plan áp dụng (ví dụ: \"mai thử áp dụng vào project\", \"cần đọc thêm docs\"...).'
 
           if [ -n "$OPEN_ROUTER_API_KEY" ]; then
             BODY=$(jq -n --arg p "$PROMPT" '{model: "arcee-ai/trinity-large-preview:free", messages: [{role: "user", content: $p}]}')
