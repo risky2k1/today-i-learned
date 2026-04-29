@@ -21,7 +21,7 @@ if [ -n "$OPEN_ROUTER_API_KEY" ]; then
 
   BODY=$(cat <<EOF
 {
-  "model": "arcee-ai/trinity-large-preview:free",
+  "model": "openrouter/free",
   "messages": [
     {
       "role": "user",
